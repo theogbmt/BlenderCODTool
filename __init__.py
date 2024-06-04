@@ -29,14 +29,14 @@ import time
 import os
 
 bl_info = {
-    "name": "BetterBlenderCoD",
-    "author": "Ma_rv, CoDEmanX, Flybynyt, SE2Dev",
-    "version": (0, 8, 0),
-    "blender": (3, 00, 0),
+    "name": "BlenderCODTool",
+    "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
+    "version": (0, 9, 0),
+    "blender": (4, 1o, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
-    "wiki_url": "https://github.com/marv7000/BetterBlenderCOD/",
-    "tracker_url": "https://github.com/marv7000/BetterBlenderCOD/issues/",
+    "wiki_url": "https://github.com/theogbmt/BlenderCODTool",
+    "tracker_url": "https://github.com/theogbmt/BlenderCODTool/issues/",
     "support": "COMMUNITY",
     "category": "Import-Export"
 }
