@@ -29,7 +29,7 @@ import time
 import os
 
 bl_info = {
-    "name": "BlenderCODTool",
+    "name": "BlenderCODTool ( 4.1 )",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
     "version": (0, 9, 0),
     "blender": (4, 1, 0),
