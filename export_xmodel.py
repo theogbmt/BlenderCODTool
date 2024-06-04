@@ -18,6 +18,8 @@
 
 # <pep8 compliant>
 
+# added custom triangulate features for vertex and improved the handling of exporting bones, it should not handle cosmetic bones without extra work, someone test.
+
 import bpy
 import bmesh
 import os
