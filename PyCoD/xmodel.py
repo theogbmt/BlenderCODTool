@@ -47,25 +47,37 @@ def deserialize_image_string(ref_string):
     return out
 
 
+def replace_symbols_and_caps(s):
+    replaced = ''
+    for c in s:
+        if not c.isalnum():
+            replaced += '_'  # Replace symbols with '!'
+        elif c.isupper():
+            replaced += c.lower()  # Replace caps with lowercase letters
+        else:
+            replaced += c
+    return replaced
+
 def serialize_image_string(image_dict, extended_features=True):
-    if extended_features is True:
+    if extended_features:
         out = ""
         prefix = ''
         for key, value in image_dict.items():
+            key = replace_symbols_and_caps(key)
+            value = replace_symbols_and_caps(value)
             out += "%s%s:%s" % (prefix, key, value)
             prefix = ' '
         return out
     else:
-        # For xmodel_export version 5, the material name and image ref
-        #  may be the same -
-        # in which case - the image dict extension shouldn't be used
-        if 'color' in image_dict:  # use the color map
+        if 'color' in image_dict:
             return image_dict['color']
-        elif image_dict != 0:  # if it cant be found, grab the first image
-            key, value = image_dict.items()[0]
-            return value
+        elif image_dict and not isinstance(image_dict, int):
+            # Replace symbols and caps in the single key-value pair
+            key, value = next(iter(image_dict.items()))
+            key = replace_symbols_and_caps(key)
+            value = replace_symbols_and_caps(value)
+            return "%s:%s" % (key, value)
         return ""
-
 
 class Bone(object):
     __slots__ = ('name', 'parent', 'offset', 'matrix', 'scale', 'cosmetic')
