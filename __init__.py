@@ -32,7 +32,7 @@ bl_info = {
     "name": "BlenderCODTool",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
     "version": (0, 9, 0),
-    "blender": (4, 1o, 0),
+    "blender": (4, 1, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
     "wiki_url": "https://github.com/theogbmt/BlenderCODTool",
