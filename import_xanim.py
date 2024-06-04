@@ -20,22 +20,82 @@
 
 import os
 import bpy
-import bmesh
-import array
 from mathutils import *
-from math import *
-from bpy_extras.image_utils import load_image
-from mathutils import Vector
 
 from . import shared as shared
-from .PyCoD import xmodel as XModel
+from .PyCoD import xanim as XAnim
 
 
-def get_armature_for_object(ob):
-    '''
-    Get the armature for a given object.
-    If the object *is* an armature, the object itself is returned.
-    '''
+def get_mat_offs(bone):
+    # Based on the following: http://blender.stackexchange.com/a/44980
+    mat_offs = bone.matrix.to_4x4()
+    mat_offs.translation = bone.head
+    mat_offs.translation.y += bone.parent.length
+
+    return mat_offs
+
+
+def get_mat_rest(pose_bone, mat_pose_parent, mat_local_parent):
+    # Based on the following: http://blender.stackexchange.com/a/44980
+    bone = pose_bone.bone
+
+    if pose_bone.parent:
+        mat_offs = get_mat_offs(bone)
+
+        # --------- rotscale
+        if (not bone.use_inherit_rotation and not bone.use_inherit_scale):
+            mat_rotscale = mat_local_parent @ mat_offs
+
+        elif not bone.use_inherit_rotation:
+            mat_size = Matrix.Identity(4)
+            for i in range(3):
+                mat_size[i][i] = mat_pose_parent.col[i].magnitude
+            mat_rotscale = mat_size @ mat_local_parent @ mat_offs
+
+        elif not bone.use_inherit_scale:
+            mat_rotscale = mat_pose_parent.normalized() @ mat_offs
+
+        else:
+            mat_rotscale = mat_pose_parent @ mat_offs
+
+        # --------- location
+        if not bone.use_local_location:
+            mat_a = Matrix.Translation(mat_pose_parent @ mat_offs.translation)
+
+            mat_b = mat_pose_parent.copy()
+            mat_b.translation = Vector()
+
+            mat_loc = mat_a @ mat_b
+
+        elif (not bone.use_inherit_rotation or not bone.use_inherit_scale):
+            mat_loc = mat_pose_parent @ mat_offs
+
+        else:
+            mat_loc = mat_rotscale.copy()
+
+    else:
+        mat_rotscale = bone.matrix_local
+        if not bone.use_local_location:
+            mat_loc = Matrix.Translation(bone.matrix_local.translation)
+        else:
+            mat_loc = mat_rotscale.copy()
+
+    return mat_rotscale, mat_loc
+
+
+def calc_basis(pose_bone, matrix, parent_mtx, parent_mtx_local):
+    # Based on the following: http://blender.stackexchange.com/a/44980
+    mat_rotscale, mat_loc = get_mat_rest(pose_bone,
+                                         parent_mtx,
+                                         parent_mtx_local)
+    basis = (matrix.to_3x3().inverted() @ mat_rotscale.to_3x3()).transposed()
+    basis.resize_4x4()
+    basis.translation = mat_loc.inverted() @ matrix.translation
+    return basis
+
+
+def find_active_armature(context):
+    ob = bpy.context.active_object
     if ob is None:
         return None
 
@@ -45,445 +105,209 @@ def get_armature_for_object(ob):
     return ob.find_armature()
 
 
-def get_armature_modifier_for_object(ob):
-    for mod in ob.modifiers:
-        if mod.type == 'ARMATURE':
-            return mod
-    return None
+def load(self, context, apply_unit_scale=False, **keywords):
+    # Used to ensure that all anims are the same framerate when batch importing
+    scale_framerate_to_match_first_anim = False
 
-
-def reassign_children(ebs, bone1, bone2):
-    for child in bone2.children:
-        kid = ebs[child.name]
-        kid.parent = bone1
-
-    ebs.remove(bone2)
-
-
-def join_objects(obs):
-    scene = bpy.context.scene
-    context = bpy.context.copy()
-    context['active_object'] = obs[0]
-    context['selected_objects'] = obs
-
-    editable_bases = [scene.object_bases[ob.name] for ob in obs]
-    context['selected_editable_bases'] = editable_bases
-    bpy.ops.object.join(context)
-
-
-def join_armatures(skel1_ob, skel2_ob, skel2_mesh_obs):
-    skel2_mesh_matrices = [mesh.matrix_world.copy() for mesh in skel2_mesh_obs]
-
-    join_objects([skel1_ob, skel2_ob])
-
-    # Ensure that the context is correct
-    bpy.context.render_layer.objects.active = skel1_ob
-    skel1_ob.select_set(state=True)
-
-    bpy.ops.object.mode_set(mode='EDIT')
-    ebs = skel1_ob.data.edit_bones
-
-    # Reassign all children for any bones that were present in both skeletons
-    for bone in ebs:
-        try:
-            t = ebs[bone.name + ".001"]
-            reassign_children(ebs, bone, t)
-        except:
-            pass
-
-    # Remove the move the duplicates
-    for bone in ebs:
-        if(bone.name.endswith(".001")):
-            ebs.remove(bone)
-
-    if 'j_gun' in ebs and 'tag_weapon' in ebs:
-        ebs['j_gun'].parent = ebs['tag_weapon']
-    elif 'tag_weapon' in ebs and 'tag_weapon_right' in ebs:
-        ebs['tag_weapon'].parent = ebs['tag_weapon_right']
-
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    # Update the matrices and armature modifier for the mesh objects
-    for mesh_ob, matrix in zip(skel2_mesh_obs, skel2_mesh_matrices):
-        mesh_ob.matrix_world = matrix
-        mod = get_armature_modifier_for_object(mesh_ob)
-        if mod is not None:
-            # Update the existing armature modifier
-            mod.object = skel1_ob
-        else:
-            # Add a new armature modifier
-            mod = mesh_ob.modifiers.new('Armature Rig', 'ARMATURE')
-            mod.object = skel1_ob
-            mod.use_bone_envelopes = False
-            mod.use_vertex_groups = True
-
-
-def load(self, context,
-         filepath,
-         global_scale=1.0,
-         apply_unit_scale=False,
-         use_single_mesh=True,
-         use_dup_tris=True,
-         use_custom_normals=True,
-         use_vertex_colors=True,
-         use_armature=True,
-         use_parents=True,
-         attach_model=False,
-         merge_skeleton=False,
-         use_image_search=True):
+    if not keywords['use_notetracks']:
+        keywords['use_notetrack_file'] = False
+    # elif fps_scale_type is 'CUSTOM':
+    #   we just use the argument fps_scale_target_fps
 
     # Apply unit conversion factor to the scale
     if apply_unit_scale:
-        global_scale *= shared.calculate_unit_scale_factor(context.scene)
+        unit_scale_factor = shared.calculate_unit_scale_factor(context.scene)
+        keywords['global_scale'] *= unit_scale_factor
 
-    target_scale = global_scale
+    armature = find_active_armature(context)
+    path = os.path.dirname(keywords['filepath'])
 
-    if use_armature is False:
-        attach_model = False
+    if armature is None:
+        return "No active armature found"
 
-    skel_old = get_armature_for_object(context.active_object)
-    if skel_old is None:
-        attach_model = False
+    # Ensure that the object has animation data
+    if armature.animation_data is None:
+        armature.animation_data_create()
 
-    if not attach_model:
-        merge_skeleton = False
+    for i, f in enumerate(self.files):
+        keywords['filepath'] = os.path.join(path, f.name)
+        anim = load_anim(self, context, armature, **keywords)
 
-    split_meshes = not use_single_mesh
-    load_images = True
+        if type(anim) is XAnim.Anim:
+            # All animations after the first one will have their framerate
+            #  refactored to match the first one that we loaded in the loop
+            if i == 0 and scale_framerate_to_match_first_anim:
+                keywords['fps_scale_type'] = 'CUSTOM'
+                keywords['fps_scale_target_fps'] = anim.framerate
+                keywords['update_scene_fps'] = False
 
-    scene = bpy.context.scene
-    view_layer = bpy.context.view_layer
 
-    # Check if there are any objects in the scene
-    if bpy.context.scene.objects:
-        # Set the first object in the scene as the active object
-        bpy.context.view_layer.objects.active = bpy.context.scene.objects[0]
-    else:
-        # If there are no objects in the scene, create a new empty object and set it as active
-        bpy.ops.object.empty_add()
-        bpy.context.view_layer.objects.active = bpy.context.active_object
+def load_anim(self, context, armature,
+              filepath,
+              global_scale=1.0,
+              use_actions=True,
+              use_actions_skip_existing=False,
+              use_notetracks=True,
+              use_notetrack_file=True,
+              fps_scale_type='DISABLED',
+              fps_scale_target_fps=30,
+              update_scene_fps=False,
+              anim_offset=0
+              ):
+    '''
+    Load a specific XAnim file
+    returns the XAnim() on success or an error message / None on failure
+    '''
 
-    # Check if an active object is set
-    if bpy.context.view_layer.objects.active:
-        # Switch to object mode
-        bpy.ops.object.mode_set(mode='OBJECT')
-    else:
-        print("No active object selected or created. Please ensure there are objects in the scene.")
+    # TEMP: Used to update the scene frame range based on the anim
+    update_scene_range = False
 
-    # Load the model
-    model_name = os.path.basename(filepath)
-    model = XModel.Model(('.').join(model_name.split('.')[:-1]))
-
+    # Load the anim
+    anim = XAnim.Anim()
     ext = os.path.splitext(filepath)[-1].upper()
-    if ext == '.XMODEL_BIN':
-        LoadModelFile = model.LoadFile_Bin
+    if ext == '.XANIM_BIN':
+        anim.LoadFile_Bin(filepath)
     else:
-        LoadModelFile = model.LoadFile_Raw
+        anim.LoadFile_Raw(filepath, use_notetrack_file)
 
-    LoadModelFile(filepath, split_meshes=split_meshes)
+    scene = context.scene
+    ob = armature
 
-    # Materials
-    materials = []
-    material_images = {}
+    bpy.ops.object.mode_set(mode='POSE')
 
-    for material in model.materials:
-        mat = bpy.data.materials.get(material.name)
-        if mat is None:
-            print("Adding material '%s'" % material.name)
-            mat = bpy.data.materials.new(name=material.name)
+    if use_actions:
+        actionName = os.path.basename(os.path.splitext(filepath)[0])
 
-            if load_images:
-                deferred_textures = []
-                for image_type, image_name in material.images.items():
-                    if image_name not in material_images:
-                        search_dir = os.path.dirname(filepath)
-                        image = load_image(image_name,
-                                           dirname=search_dir,
-                                           recursive=use_image_search,
-                                           check_existing=True)
-                        if image is None:
-                            print("Failed to load image: '%s'" % image_name)
-                            image = load_image(image_name,
-                                               dirname=None,
-                                               recursive=False,
-                                               check_existing=True,
-                                               place_holder=True)
-                        material_images[image_name] = image
-                    elif image_name in bpy.data.images:
-                        image = bpy.data.images[image_name]
-                    else:
-                        image = material_images[image_name]
-        else:
-            if mat not in materials:
-                print("Material '%s' already exists!" % material.name)
-        materials.append(mat)
+        # Skip existing actions
+        if use_actions_skip_existing and actionName in bpy.data.actions:
+            # Should we print a notification here?
+            return
 
-    # Meshes
-    mesh_objs = []
-    for sub_mesh in model.meshes:
-        if split_meshes is False:
-            sub_mesh.name = "%s_mesh" % model.name
-        print("Creating mesh: '%s'" % sub_mesh.name)
-        mesh = bpy.data.meshes.new(sub_mesh.name)
-        bm = bmesh.new()
+        action = bpy.data.actions.new(actionName)
+        ob.animation_data.action = action
+        ob.animation_data.action.use_fake_user = True
 
-        # Add UV Layers
-        uv_layer = bm.loops.layers.uv.new("UVMap")
+    if update_scene_fps:
+        scene.render.fps = anim.framerate
 
-        # Add Vertex Color Layer
-        if use_vertex_colors:
-            vert_color_layer = bm.loops.layers.color.new("Color")
+    if fps_scale_type == 'SCENE':
+        fps_scale_target_fps = scene.render.fps
 
-        # Add Verts
-        for vert in sub_mesh.verts:
-            bm.verts.new(Vector(vert.offset) * target_scale)
-        bm.verts.ensure_lookup_table()
+    if fps_scale_type == 'DISABLED':
+        frame_scale = 1
+    else:
+        frame_scale = fps_scale_target_fps / anim.framerate
 
-        dup_faces = []
-        dup_verts = []
-        dup_verts_mapping = [None] * len(sub_mesh.verts)
-        used_faces = []
-        loop_normals = []
-        material_usage_counts = [0] * len(materials)
+    if update_scene_range:
+        frames = [frame.frame for frame in anim.frames]
+        scene.frame_start = min(frames) * frame_scale
+        scene.frame_end = max(frames) * frame_scale
 
-        def setup_tri(f):
-            material_index = face.material_id
-            f.material_index = material_index
-            material_usage_counts[material_index] += 1
+        # Adjust the frame shift so that if the first frame doesn't move when
+        #  the anim gets scaled, apply the anim_offset on top of that
+        frame_shift = anim_offset - scene.frame_start
+        scene.frame_start = scene.frame_start - frame_shift
+        scene.frame_end = scene.frame_end - frame_shift
+    else:
+        frame_shift = anim_offset
 
-            for loop_index, loop in enumerate(f.loops):
-                face_index_loop = face.indices[loop_index]
-                loop_normals.append(face_index_loop.normal)
-                uv = Vector(face_index_loop.uv)
-                uv.y = 1.0 - uv.y
-                loop[uv_layer].uv = uv
-                if use_vertex_colors:
-                    loop[vert_color_layer] = face_index_loop.color
+    # Used to store bone metadata & matrix info for each animated bone
+    class MappedBone(object):
+        __slots__ = ('bone', 'part_index', 'matrix', 'matrix_local', 'parent')
 
-            used_faces.append(face)
+        def __init__(self, pose_bone, part_index):
+            self.bone = pose_bone
+            self.part_index = part_index
+            self.matrix = Matrix()
+            self.matrix_local = pose_bone.bone.matrix_local
+            self.parent = None
 
-        unused_faces = []
+        def map_parent(self, bone_map):
+            # Traverses the parents of the current bone recursively until -
+            # one that is present in the anim is found
+            # If none can be found, self.parent is set to None
+            bone_names = [mapped_bone.bone.name for mapped_bone in bone_map]
 
-        vert_count = len(sub_mesh.verts)
-        for face_index, face in enumerate(sub_mesh.faces):
-            tmp = face.indices[2]
-            face.indices[2] = face.indices[1]
-            face.indices[1] = tmp
+            bone = self.bone
+            while bone is not None:
+                if bone.name in bone_names:
+                    parent_index = bone_names.index(bone.name)
+                    self.parent = bone_map[parent_index]
+                    return
+                bone = bone.parent
+            self.parent = None
+            return
 
-            indices = [bm.verts[index.vertex] for index in face.indices]
+    # Map the PoseBones to their corresponding part numbers, parents, etc.
+    # The order of PoseBones in bone_map should match ob.pose.bones -
+    # which stores them in hierarchical order, meaning a bone's parent -
+    # will always be *earlier* in the list than the child
+    bone_map = []
+    part_names = [part.name.lower() for part in anim.parts]
+    for bone_index, bone in enumerate(ob.pose.bones):
+        if bone.name in part_names:
+            part_index = part_names.index(bone.name)
+            # Don't add bones that didn't have a matching part in the anim
+            if part_index is not None:
+                mapped_bone = MappedBone(bone, part_index)
+                mapped_bone.map_parent(bone_map)
 
-            try:
-                f = bm.faces.new(indices)
-            except ValueError:
-                unused_faces.append(face)
-
-                if not face.isValid():
-                    print("TRI %d is invalid! %s" %
-                          (face_index, [index.vertex for index in face.indices]))
-                    continue
-
-                for index in face.indices:
-                    vert = index.vertex
-                    if dup_verts_mapping[vert] is None:
-                        dup_verts_mapping[vert] = len(dup_verts) + vert_count
-                        dup_verts.append(sub_mesh.verts[vert])
-                    index.vertex = dup_verts_mapping[vert]
-                dup_faces.append(face)
+                bone_map.append(mapped_bone)
             else:
-                setup_tri(f)
+                # If the bone isn't used in the anim
+                #  simply reset it to its rest pose
+                bone.matrix_basis.identity()
 
-        for face in unused_faces:
-            sub_mesh.faces.remove(face)
+    # Load the keyframes
+    for frame in anim.frames:
+        f = frame.frame * frame_scale + frame_shift
 
-        if use_dup_tris:
-            for vert in dup_verts:
-                bm.verts.new(Vector(vert.offset) * target_scale)
-            bm.verts.ensure_lookup_table()
-
-            for face in dup_faces:
-                indices = [bm.verts[index.vertex] for index in face.indices]
-                try:
-                    f = bm.faces.new(indices)
-                except ValueError:
-                    pass
-                else:
-                    setup_tri(f)
-
-        deform_layer = bm.verts.layers.deform.new()
-        for vert_index, vert in enumerate(sub_mesh.verts):
-            for bone, weight in vert.weights:
-                bm.verts[vert_index][deform_layer][bone] = weight
-
-        if use_dup_tris:
-            offset = len(sub_mesh.verts)
-            for vert_index, vert in enumerate(dup_verts):
-                for bone, weight in vert.weights:
-                    bm.verts[vert_index + offset][deform_layer][bone] = weight
-
-        for mat in materials:
-            mesh.materials.append(mat)
-
-        bm.to_mesh(mesh)
-
-        material_index = 0
-        material_usage_index = 0
-        for material in mesh.materials:
-            if material_usage_counts[material_usage_index] == 0:
-                mesh.materials.pop(index=material_index)
+        for mapped_bone in bone_map:
+            # Because a bone's parent is always *before* the child in bone_map
+            #  it should always have an valid parent matrix
+            #  (unless there is no parent)
+            mapped_bone_parent = mapped_bone.parent
+            if mapped_bone_parent is not None:
+                parent_matrix = mapped_bone_parent.matrix
+                parent_local_matrix = mapped_bone_parent.matrix_local
             else:
-                material_index += 1
-            material_usage_index += 1
+                parent_matrix = Matrix()
+                parent_local_matrix = parent_matrix
 
-        if use_custom_normals:
-            calculate_split_normals(mesh)
-            mesh.validate(clean_customdata=False)
-            clnors = array.array('f', [0.0] * (len(mesh.loops) * 3))
-            mesh.loops.foreach_get("normal", clnors)
+            part = frame.parts[mapped_bone.part_index]
+            mtx = Matrix(part.matrix).transposed().to_4x4()
+            mtx.translation = Vector(part.offset) * global_scale
 
-            polygon_count = len(mesh.polygons)
-            mesh.polygons.foreach_set("use_smooth", [True] * polygon_count)
+            # Store this bone's current matrix for its children to access
+            mapped_bone.matrix = mtx.copy()
 
-            mesh.normals_split_custom_set(tuple(zip(*(iter(clnors),) * 3)))
+            bone = mapped_bone.bone
+            matrix_basis = calc_basis(bone,
+                                      mtx,
+                                      parent_matrix,
+                                      parent_local_matrix)
+            bone.matrix_basis = matrix_basis.copy()
+
+            bone.keyframe_insert("location", index=-1, frame=f)
+            bone.keyframe_insert("rotation_quaternion", index=-1, frame=f)
+
+    # Load the notes
+    if use_notetracks:
+        if use_actions:
+            markers = action.pose_markers
+            for anim_note in anim.notes:
+                name = anim_note.string
+                frame = anim_note.frame * frame_scale - frame_shift
+                note = markers.new(name)
         else:
-            mesh.validate()
+            markers = context.scene.timeline_markers
+            for anim_note in anim.notes:
+                name = anim_note.string
+                frame = anim_note.frame * frame_scale - frame_shift
+                frame = int(frame)
+                note = markers.new(name, frame=frame)
 
-            polygon_count = len(mesh.polygons)
-            mesh.polygons.foreach_set("use_smooth", [True] * polygon_count)
+        
 
-            mesh.calc_normals()
-
-        if split_meshes:
-            obj_name = "%s_%s" % (model.name, mesh.name)
-        else:
-            obj_name = model.name
-
-        obj = bpy.data.objects.new(obj_name, mesh)
-        mesh_objs.append(obj)
-
-        scene.collection.objects.link(obj)
-        view_layer.objects.active = obj
-
-        for bone in model.bones:
-            obj.vertex_groups.new(name=bone.name.lower())
-
-        if load_images:
-            material_image_map = [None] * len(model.materials)
-            for index, material in enumerate(model.materials):
-                if 'color' in material.images:
-                    color_map = material.images['color']
-                    if color_map in bpy.data.images:
-                        material_image_map[index] = bpy.data.images[color_map]
-
-    if use_armature:
-        armature = bpy.data.armatures.new("%s_amt" % model.name)
-        armature.display_type = "STICK"
-
-        skel_obj = bpy.data.objects.new("%s_skel" % model.name, armature)
-        skel_obj.show_in_front = True
-
-        scene.collection.objects.link(skel_obj)
-        view_layer.objects.active = skel_obj
-
-        bpy.ops.object.mode_set(mode='EDIT')
-
-        for bone in model.bones:
-            edit_bone = armature.edit_bones.new(bone.name.lower())
-            edit_bone.use_local_location = False
-
-            offset = Vector(bone.offset) * target_scale
-            axis = Vector(bone.matrix[1]) * target_scale
-            roll = Vector(bone.matrix[2])
-
-            edit_bone.head = offset
-            edit_bone.tail = offset + axis
-            edit_bone.align_roll(roll)
-
-            if bone.parent != -1:
-                parent = armature.edit_bones[bone.parent]
-                if self.use_parents is True:
-                    edit_bone.parent = parent
-
-        bpy.ops.object.mode_set(mode='OBJECT')
-
-        for mesh_obj in mesh_objs:
-            mesh_obj.parent = skel_obj
-            modifier = mesh_obj.modifiers.new('Armature Rig', 'ARMATURE')
-            modifier.object = skel_obj
-            modifier.use_bone_envelopes = False
-            modifier.use_vertex_groups = True
-
-        if attach_model and skel_old is not None:
-            skel_obj.select_set(True)
-            skel_old.select_set(True)
-            view_layer.objects.active = skel_old
-            bpy.ops.object.mode_set(mode='OBJECT')
-            bpy.ops.object.join()
-            skel_obj.select_set(False)
-            skel_old.select_set(False)
-
-            if merge_skeleton:
-                bpy.ops.object.mode_set(mode='EDIT')
-                bpy.ops.armature.merge()
-                bpy.ops.object.mode_set(mode='OBJECT')
-
-    #return {'FINISHED'}
-
-def manual_calc_normal(face):
-    """ Manually calculate the normal for a face """
-    verts = face.verts
-    if len(verts) < 3:
-        return Vector((0.0, 0.0, 0.0))
-    
-    v0, v1, v2 = verts[:3]
-    edge1 = v1.co - v0.co
-    edge2 = v2.co - v0.co
-    normal = edge1.cross(edge2).normalized()
-    return normal
-
-def calculate_face_normals(bm):
-    """ Calculate the normal for each face """
-    for face in bm.faces:
-        face.normal = manual_calc_normal(face)
-
-def calculate_split_normals(mesh):
-    # Ensure we are in object mode
-    bpy.ops.object.mode_set(mode='OBJECT')
-
-    # Create a BMesh object from the mesh data
-    bm = bmesh.new()
-    bm.from_mesh(mesh)
-    
-    # Calculate face normals
-    calculate_face_normals(bm)
-
-    # Prepare a list to store calculated loop normals
-    loop_normals = []
-
-    # Calculate split normals
-    for face in bm.faces:
-        face_normal = face.normal
-        for loop in face.loops:
-            vertex = loop.vert
-            edge = loop.edge
-
-            if edge.smooth:
-                normal_sum = Vector((0.0, 0.0, 0.0))
-                linked_faces_count = 0
-                for linked_face in vertex.link_faces:
-                    normal_sum += linked_face.normal
-                    linked_faces_count += 1
-                if linked_faces_count > 0:
-                    loop_normal = (normal_sum / linked_faces_count).normalized()
-            else:
-                loop_normal = face_normal
-
-            loop_normals.append(loop_normal)
-
-    # Assign calculated normals to the mesh
-    mesh.normals_split_custom_set(loop_normals)
-    
-    # Update the mesh to apply changes
-    mesh.update()
-    
-    # Free BMesh
-    bm.free()
+    context.view_layer.update()
+    return anim
