@@ -21,11 +21,13 @@
 import bpy
 import bmesh
 import os
+import math
 from itertools import repeat
-
+from mathutils import Vector
+from collections import defaultdict
 from . import shared as shared
 from .PyCoD import xmodel as XModel
-
+import re
 
 def _skip_notice(ob_name, mesh_name, notice):
     vargs = (ob_name, mesh_name, notice)
@@ -136,6 +138,15 @@ def gather_exportable_objects(self, context,
 
     return armature, obs
 
+def sanitize_material_name(name):
+    # Replace non-alphanumeric characters and consecutive underscores with a single underscore
+    name = re.sub(r'[^a-zA-Z0-9]+', '_', name)
+    # Convert uppercase characters to lowercase
+    name = name.lower()
+    # Remove leading and trailing underscores
+    name = name.strip('_')
+    return name
+
 
 def material_gen_image_dict(material):
     '''
@@ -145,7 +156,16 @@ def material_gen_image_dict(material):
     if not material:
         return out
     unk_count = 0
-    #! Texture slots are deprecated
+
+    print( material.name )
+    # Sanitize material name
+    material_name = sanitize_material_name(material.name)
+
+    # Add material name to dictionary
+    out['material_name'] = material_name
+
+    # Iterate over texture slots (deprecated in Blender)
+    # Modify this part according to your needs if you're using a different method to get textures
     """for slot in material.texture_slots:
         if slot is None:
             continue
@@ -169,8 +189,8 @@ def material_gen_image_dict(material):
             else:
                 out['unk_%d' % unk_count] = image
                 unk_count += 1"""
-    return out
 
+    return out
 
 class ExportMesh(object):
     '''
@@ -236,7 +256,7 @@ class ExportMesh(object):
         mesh = XModel.Mesh(self.mesh.name)
 
         if self.mesh.has_custom_normals:
-            self.mesh.calc_normals_split()
+            calculate_split_normals( self.mesh )
         else:
             self.mesh.calc_normals()
 
@@ -342,7 +362,7 @@ def save(self, context, filepath,
 
         for ob in bpy.data.objects:
             if ob.type == 'MESH':
-                context.scene.objects.active = ob
+                context.view_layer.objects.active = ob
                 break
         else:
             return "No mesh to export."
@@ -489,7 +509,7 @@ def save_model(self, context, filepath, armature, objects,
         # Should we have an arg for this? It seems to be automatic...
         use_split_normals = True
         if use_split_normals:
-            mesh.calc_normals_split()
+            calculate_split_normals( mesh )
 
         # Restore modifier settings
         for i, mod in enumerate(ob.modifiers):
@@ -573,10 +593,10 @@ def save_model(self, context, filepath, armature, objects,
     for material in materials:
         imgs = material_gen_image_dict(material)
         try:
-            name = material.name
+            name = sanitize_material_name(material.name)
         except:
             name = "material" + str(missing_count)
-            missing_count = missing_count + 1
+            missing_count += 1
 
         mtl = XModel.Material(name, "Lambert", imgs)
         model.materials.append(mtl)
@@ -593,3 +613,63 @@ def save_model(self, context, filepath, armature, objects,
 
     # Do we need this view_layer.update?
     context.view_layer.update()
+
+
+def manual_calc_normal(vertices):
+    """ Manually calculate the normal for a face """
+    v0, v1, v2 = vertices[:3]
+    edge1 = (v1[0] - v0[0], v1[1] - v0[1], v1[2] - v0[2])
+    edge2 = (v2[0] - v0[0], v2[1] - v0[1], v2[2] - v0[2])
+    normal = (
+        edge1[1] * edge2[2] - edge1[2] * edge2[1],
+        edge1[2] * edge2[0] - edge1[0] * edge2[2],
+        edge1[0] * edge2[1] - edge1[1] * edge2[0]
+    )
+    length = math.sqrt(normal[0] ** 2 + normal[1] ** 2 + normal[2] ** 2)
+    if length == 0:
+        return (0.0, 0.0, 0.0)
+    return (normal[0] / length, normal[1] / length, normal[2] / length)
+
+def calculate_face_normals(mesh):
+    """ Calculate the normal for each face """
+    verts = [vert.co for vert in mesh.vertices]
+    faces = [face.vertices for face in mesh.polygons]
+
+    face_normals = []
+    for face in faces:
+        face_vertices = [verts[index] for index in face]
+        normal = manual_calc_normal(face_vertices)
+        face_normals.append(normal)
+    return face_normals
+
+def calculate_split_normals(mesh):
+    # Dictionary to store neighboring faces for each vertex
+    vertex_neighbors = defaultdict(list)
+
+    # Calculate face normals
+    face_normals = calculate_face_normals(mesh)
+
+    # Populate vertex_neighbors
+    for face_index, face in enumerate(mesh.polygons):
+        for vert_index in face.vertices:
+            vertex_neighbors[vert_index].append(face_index)
+
+    loop_normals = []
+    for face_index, face in enumerate(mesh.polygons):
+        face_normal = face_normals[face_index]
+        for loop_index in face.loop_indices:
+            vertex_index = mesh.loops[loop_index].vertex_index
+            edge_normals = []
+            for neighbor_face_index in vertex_neighbors[vertex_index]:
+                edge_normals.append(face_normals[neighbor_face_index])
+            if edge_normals:
+                loop_normal = (
+                    sum(normal[0] for normal in edge_normals) / len(edge_normals),
+                    sum(normal[1] for normal in edge_normals) / len(edge_normals),
+                    sum(normal[2] for normal in edge_normals) / len(edge_normals)
+                )
+            else:
+                loop_normal = face_normal
+            loop_normals.append(loop_normal)
+
+    return loop_normals
