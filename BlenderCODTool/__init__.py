@@ -20,7 +20,7 @@
 bl_info = {
     "name": "BlenderCODTool 4.1",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
-    "version": (0, 9, 0),
+    "version": (0, 9, 1),
     "blender": (4, 1, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
@@ -97,13 +97,21 @@ def AlxUnregisterClassQueue():
 ##################################################
 
 from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregister
+from . import addon_updater_ops
 
 def register():
+    try:
+        addon_updater_ops.register(bl_info)
+    except:
+        pass
+
     AlxRegisterClassQueue()
 
     submenu_reloader_register()
 
 def unregister():
+    addon_updater_ops.unregister()
+
     AlxUnregisterClassQueue()
 
     submenu_reloader_unregister()
