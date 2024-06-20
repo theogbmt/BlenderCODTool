@@ -73,7 +73,7 @@ class BlenderCoD_Preferences(AddonPreferences):
         name="Group Import/Export Buttons",
         default=False,
         update=update_submenu_mode
-    )
+    ) #type:ignore
 
     unit_enum: EnumProperty(
         items=(('CENTI', "Centimeters", ""),
@@ -91,7 +91,7 @@ class BlenderCoD_Preferences(AddonPreferences):
                     "no units are specified in the scene presets",
         default='INCH',
         update=update_scale_length
-    )
+    ) #type:ignore
 
     scale_length: FloatProperty(
         name="Unit Scale",
@@ -106,7 +106,7 @@ class BlenderCoD_Preferences(AddonPreferences):
         precision=6,
         step=1,
         default=1.0
-    )
+    ) #type:ignore
 
     def draw(self, context):
         layout = self.layout
@@ -155,7 +155,7 @@ class COD_MT_import_xmodel(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(
         default="*.XMODEL_EXPORT;*.XMODEL_BIN",
         options={'HIDDEN'}
-    )
+    ) #type:ignore
 
     ui_tab: EnumProperty(
         items=(('MAIN', "Main", "Main basic settings"),
@@ -164,57 +164,57 @@ class COD_MT_import_xmodel(bpy.types.Operator, ImportHelper):
         name="ui_tab",
         description="Import options categories",
         default='MAIN'
-    )
+    ) #type:ignore
 
     global_scale: FloatProperty(
         name="Scale",
         min=0.001, max=1000.0,
         default=1.0,
-    )
+    ) #type:ignore
 
     apply_unit_scale: BoolProperty(
         name="Apply Unit",
         description="Scale all data according to current Blender size,"
                     " to match CoD units",
         default=True,
-    )
+    ) #type:ignore
 
     use_single_mesh: BoolProperty(
         name="Combine Meshes",
         description="Combine all meshes in the file into a single object",  # nopep8
         default=True
-    )
+    ) #type:ignore
 
     use_dup_tris: BoolProperty(
         name="Import Duplicate Tris",
         description=("Import tris that reuse the same vertices as another tri "
                      "(otherwise they are discarded)"),
         default=True
-    )
+    ) #type:ignore
 
     use_custom_normals: BoolProperty(
         name="Import Normals",
         description=("Import custom normals, if available "
                      "(otherwise Blender will recompute them)"),
         default=True
-    )
+    ) #type:ignore
 
     use_vertex_colors: BoolProperty(
         name="Import Vertex Colors",
         default=True
-    )
+    ) #type:ignore
 
     use_armature: BoolProperty(
         name="Import Armature",
         description="Import the skeleton",
         default=True
-    )
+    ) #type:ignore
 
     use_parents: BoolProperty(
         name="Import Relationships",
         description="Import the parent / child bone relationships",
         default=True
-    )
+    ) #type:ignore
 
     """
     force_connect_children : BoolProperty(
@@ -230,20 +230,20 @@ class COD_MT_import_xmodel(bpy.types.Operator, ImportHelper):
         name="Attach Model",
         description="Attach head to body, gun to hands, etc.",
         default=False
-    )
+    ) #type:ignore
 
     merge_skeleton: BoolProperty(
         name="Merge Skeletons",
         description="Merge imported skeleton with the selected skeleton",
         default=False
-    )
+    ) #type:ignore
 
     use_image_search: BoolProperty(
         name="Image Search",
         description=("Search subdirs for any associated images "
                      "(Warning, may be slow)"),
         default=True
-    )
+    ) #type:ignore
 
     def execute(self, context):
         from . import import_xmodel
@@ -312,49 +312,49 @@ class COD_MT_import_xanim(bpy.types.Operator, ImportHelper):
     filter_glob: StringProperty(
         default="*.XANIM_EXPORT;*.NT_EXPORT;*.XANIM_BIN",
         options={'HIDDEN'}
-    )
+    ) #type:ignore
 
-    files: CollectionProperty(type=bpy.types.PropertyGroup)
+    files: CollectionProperty(type=bpy.types.PropertyGroup) #type:ignore
 
     global_scale: FloatProperty(
         name="Scale",
         min=0.001, max=1000.0,
         default=1.0,
-    )
+    ) #type:ignore
 
     apply_unit_scale: BoolProperty(
         name="Apply Unit",
         description="Scale all data according to current Blender size,"
                     " to match CoD units",
         default=True,
-    )
+    ) #type:ignore
 
     use_actions: BoolProperty(
         name="Import as Action(s)",
         description=("Import each animation as a separate action "
                      "instead of appending to the current action"),
         default=True
-    )
+    ) #type:ignore
 
     use_actions_skip_existing: BoolProperty(
         name="Skip Existing Actions",
         description="Skip animations that already have existing actions",
         default=False
-    )
+    ) #type:ignore
 
     use_notetracks: BoolProperty(
         name="Import Notetracks",
         description=("Import notes to scene timeline markers "
                      "(or action pose markers if 'Import as Action' is enabled)"),  # nopep8
         default=True
-    )
+    ) #type:ignore
 
     use_notetrack_file: BoolProperty(
         name="Import NT_EXPORT File",
         description=("Automatically import the matching NT_EXPORT file "
                      "(if present) for each XANIM_EXPORT"),
         default=True
-    )
+    ) #type:ignore
 
     fps_scale_type: EnumProperty(
         name="Scale FPS",
@@ -364,7 +364,7 @@ class COD_MT_import_xanim(bpy.types.Operator, ImportHelper):
                ('CUSTOM', "Custom", "Use custom framerate")
                ),
         default='DISABLED',
-    )
+    ) #type:ignore
 
     fps_scale_target_fps: FloatProperty(
         name="Target FPS",
@@ -373,20 +373,20 @@ class COD_MT_import_xanim(bpy.types.Operator, ImportHelper):
         default=30,
         min=1,
         max=120
-    )
+    ) #type:ignore
 
     update_scene_fps: BoolProperty(
         name="Update Scene FPS",
         description=("Set the scene framerate to match the framerate "
                      "found in the first imported animation"),
         default=False
-    )
+    ) #type:ignore
 
     anim_offset: FloatProperty(
         name="Animation Offset",
         description="Offset to apply to animation during import, in frames",
         default=1.0,
-    )
+    ) #type:ignore
 
     def execute(self, context):
         from . import import_xanim
@@ -449,7 +449,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".XMODEL_EXPORT"
     filter_glob: StringProperty(
-        default="*.XMODEL_EXPORT;*.XMODEL_BIN", options={'HIDDEN'})
+        default="*.XMODEL_EXPORT;*.XMODEL_BIN", options={'HIDDEN'}) #type:ignore
 
     # List of operator properties, the attributes will be assigned
     # to the class instance from the operator settings before calling.
@@ -468,7 +468,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                ('XMODEL_BIN', "XMODEL_BIN",
                 "Binary model format used by CoD:BO3")),
         default='XMODEL_EXPORT'
-    )
+    ) #type:ignore
 
     version: EnumProperty(
         name="Version",
@@ -477,34 +477,34 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                ('6', "Version 6", "CoD2, CoD4, CoD:WaW, CoD:BO"),
                ('7', "Version 7", "CoD:BO3")),
         default='6'
-    )
+    ) #type:ignore
 
     use_selection: BoolProperty(
         name="Selection only",
         description=("Export selected meshes only "
                      "(object or weight paint mode)"),
         default=False
-    )
+    ) #type:ignore
 
     global_scale: FloatProperty(
         name="Scale",
         min=0.001, max=1000.0,
         default=1.0,
-    )
+    ) #type:ignore
 
     apply_unit_scale: BoolProperty(
         name="Apply Unit",
         description="Scale all data according to current Blender size,"
                     " to match CoD units",
         default=True,
-    )
+    ) #type:ignore
 
     use_vertex_colors: BoolProperty(
         name="Vertex Colors",
         description=("Export vertex colors "
                      "(if disabled, white color will be used)"),
         default=True
-    )
+    ) #type:ignore
 
     #  White is 1 (opaque), black 0 (invisible)
     use_vertex_colors_alpha: BoolProperty(
@@ -513,7 +513,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                      "by averaging the RGB color values together "
                      "(if disabled, 1.0 is used)"),
         default=False
-    )
+    ) #type:ignore
 
     use_vertex_colors_alpha_mode: EnumProperty(
         name="Vertex Alpha Source Layer",
@@ -525,7 +525,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                  "(If only one layer is present, the active layer is used)")),
                ),
         default='PRIMARY'
-    )
+    ) #type:ignore
 
     use_vertex_cleanup: BoolProperty(
         name="Clean Up Vertices",
@@ -533,13 +533,13 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                      "Skips vertices which aren't used by any face "
                      "and updates references."),
         default=False
-    )
+    ) #type:ignore
 
     apply_modifiers: BoolProperty(
         name="Apply Modifiers",
         description="Apply all mesh modifiers (except Armature)",
         default=False
-    )
+    ) #type:ignore
 
     modifier_quality: EnumProperty(
         name="Modifier Quality",
@@ -548,14 +548,14 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
                ('RENDER', "Render", ""),
                ),
         default='PREVIEW'
-    )
+    ) #type:ignore
 
     use_armature: BoolProperty(
         name="Armature",
         description=("Export bones "
                      "(if disabled, only a 'tag_origin' bone will be written)"),  # nopep8
         default=True
-    )
+    ) #type:ignore
 
     """
     use_armature_pose : BoolProperty(
@@ -585,7 +585,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
         description=("Try this if you get 'too small weight' "
                      "errors when converting"),
         default=False,
-    )
+    ) #type:ignore
 
     use_weight_min_threshold: FloatProperty(
         name="Threshold",
@@ -594,7 +594,7 @@ class COD_MT_export_xmodel(bpy.types.Operator, ExportHelper):
         min=0.0,
         max=1.0,
         precision=6
-    )
+    ) #type:ignore
 
     def execute(self, context):
         from . import export_xmodel
@@ -727,7 +727,7 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
 
     filename_ext = ".XANIM_EXPORT"
     filter_glob: StringProperty(
-        default="*.XANIM_EXPORT;*.XANIM_BIN", options={'HIDDEN'})
+        default="*.XANIM_EXPORT;*.XANIM_BIN", options={'HIDDEN'}) #type:ignore
 
     # Used to map target_format values to actual file extensions
     format_ext_map = {
@@ -743,32 +743,32 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
                ('XANIM_BIN', "XANIM_BIN",
                 "Binary animation format used by CoD:BO3")),
         default='XANIM_EXPORT'
-    )
+    ) #type:ignore
 
     use_selection: BoolProperty(
         name="Selection Only",
         description="Export selected bones only (pose mode)",
         default=False
-    )
+    ) #type:ignore
 
     global_scale: FloatProperty(
         name="Scale",
         min=0.001, max=1000.0,
         default=1.0,
-    )
+    ) #type:ignore
 
     apply_unit_scale: BoolProperty(
         name="Apply Unit",
         description="Scale all data according to current Blender size,"
                     " to match CoD units",
         default=True,
-    )
+    ) #type:ignore
 
     use_all_actions: BoolProperty(
         name="Export All Actions",
         description="Export *all* actions rather than just the active one",
         default=False
-    )
+    ) #type:ignore
 
     filename_format: StringProperty(
         name="Format",
@@ -778,13 +778,13 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
                      "%base,   %b - The base filename (at the top of the export window)\n"  # nopep8
                      ""),
         default="%action"
-    )
+    ) #type:ignore
 
     use_notetracks: BoolProperty(
         name="Notetracks",
         description="Export notetracks",
         default=True
-    )
+    ) #type:ignore
 
     use_notetrack_mode: EnumProperty(
         name="Notetrack Mode",
@@ -794,7 +794,7 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
                ('ACTION', "Action",
                 "Separate NT_EXPORT notetrack file for 'Black Ops'")),
         default='ACTION'
-    )
+    ) #type:ignore
 
     use_notetrack_format: EnumProperty(
         name="Notetrack format",
@@ -809,14 +809,14 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
                 "Inline notetrack data for all CoD versions except WaW and BO")
                ),
         default='1'
-    )
+    ) #type:ignore
 
     use_notetrack_file: BoolProperty(
         name="Write NT_EXPORT",
         description=("Create an NT_EXPORT file for "
                      "the exported XANIM_EXPORT file(s)"),
         default=False
-    )
+    ) #type:ignore
 
     use_frame_range_mode: EnumProperty(
         name="Frame Range Mode",
@@ -825,28 +825,28 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
                ('ACTION', "Action", "Use the frame range from each action"),
                ('CUSTOM', "Custom", "Use a user-defined frame range")),
         default='ACTION'
-    )
+    ) #type:ignore
 
     frame_start: IntProperty(
         name="Start",
         description="First frame to export",
         min=0,
         default=1
-    )
+    ) #type:ignore
 
     frame_end: IntProperty(
         name="End",
         description="Last frame to export",
         min=0,
         default=250
-    )
+    ) #type:ignore
 
     use_custom_framerate: BoolProperty(
         name="Custom Framerate",
         description=("Force all written files to use a user defined "
                      "custom framerate rather than the scene's framerate"),
         default=False
-    )
+    ) #type:ignore
 
     use_framerate: IntProperty(
         name="Framerate",
@@ -855,7 +855,7 @@ class COD_MT_export_xanim(bpy.types.Operator, ExportHelper):
         default=30,
         min=1,
         max=1000
-    )
+    ) #type:ignore
 
     def execute(self, context):
         from . import export_xanim
