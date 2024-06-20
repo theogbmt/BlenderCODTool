@@ -5,7 +5,7 @@ from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregiste
 
 
 class BlenderCoD_Preferences(AddonPreferences):
-    bl_idname = __name__
+    bl_idname = __package__
 
     def update_submenu_mode_lambda(self, context):
         try:
