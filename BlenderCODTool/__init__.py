@@ -20,7 +20,7 @@
 bl_info = {
     "name": "BlenderCODTool 4.1",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
-    "version": (0, 9, 1),
+    "version": (0, 9, 2),
     "blender": (4, 1, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
@@ -37,7 +37,7 @@ import bpy
 import os
 import importlib
 
-folder_blacklist = ["__pycache__"]
+folder_blacklist = ["__pycache__", "blendercodtool_updater"]
 file_blacklist = ["__init__.py", "addon_updater_ops", "addon_updater.py"]
 
 addon_folders = list([__path__[0]])
