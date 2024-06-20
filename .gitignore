@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 *.zip
+*/blendercodtool_updater
 
 # C extensions
 *.so

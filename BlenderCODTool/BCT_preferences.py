@@ -3,6 +3,7 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty
 
 from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregister
 
+from . import addon_updater_ops
 
 class BlenderCoD_Preferences(AddonPreferences):
     bl_idname = __package__
@@ -72,6 +73,9 @@ class BlenderCoD_Preferences(AddonPreferences):
 
     def draw(self, context):
         layout = self.layout
+
+        addon_updater_ops.update_settings_ui(self, context)
+
         row = layout.row()
         row.prop(self, "use_submenu")
         # Scale Options
@@ -82,3 +86,5 @@ class BlenderCoD_Preferences(AddonPreferences):
         sub = col.split(align=True)
         sub.enabled = self.unit_enum == 'CUSTOM'
         sub.prop(self, "scale_length")
+
+        
