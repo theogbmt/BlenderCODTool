@@ -1,3 +1,4 @@
+#XMODEL DRAG N DROP SUPPORT ADDED
 import bpy
 import time
 from . import import_xmodel  # Adjust this import based on your actual module structure
