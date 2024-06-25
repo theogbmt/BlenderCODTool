@@ -1,3 +1,4 @@
+#added cod_scaling setting
 import bpy
 import subprocess
 import os
