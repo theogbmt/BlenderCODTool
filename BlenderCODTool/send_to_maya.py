@@ -1,3 +1,4 @@
+#added cod_scaling setting
 import bpy
 import subprocess
 import os
@@ -50,6 +51,20 @@ class OBJECT_OT_switch_to_blender_scaling(bpy.types.Operator):
         bpy.context.scene.unit_settings.scale_length = 1.0
         bpy.context.scene.unit_settings.length_unit = 'METERS'
         write_settings(read_settings()["maya_path"], 1.0)  # Update scale value in settings file
+        return {'FINISHED'}
+
+# Operator to switch to CoD scaling
+class OBJECT_OT_switch_to_cod_scaling(bpy.types.Operator):
+    bl_idname = "object.switch_to_cod_scaling"
+    bl_label = "Switch to COD Scaling"
+    bl_description = "Switch all settings to COD inch/unit scaling standards"
+
+    def execute(self, context):
+        # Set unit system to Imperial (inches)
+        bpy.context.scene.unit_settings.system = 'IMPERIAL'
+        bpy.context.scene.unit_settings.length_unit = 'INCHES'
+        bpy.context.scene.unit_settings.scale_length = 1.0 / 39.3701  # Convert 1 meter to inches
+        write_settings(read_settings()["maya_path"], 1.0 / 39.3701)  # Update scale value in settings file
         return {'FINISHED'}
 
 # Operator to switch to Maya scaling
@@ -158,6 +173,7 @@ class VIEW3D_PT_scaling_tools_panel(bpy.types.Panel):
 
         layout.operator("object.switch_to_blender_scaling", text="Switch to Blender Scaling")
         layout.operator("object.switch_to_maya_scaling", text="Switch to Maya Scaling")
+        layout.operator("object.switch_to_cod_scaling", text="Switch to COD Scaling")
 
 
 # Register all classes
@@ -168,6 +184,7 @@ def register():
     bpy.utils.register_class(VIEW3D_PT_maya_tools_panel)
     bpy.utils.register_class(OBJECT_OT_switch_to_blender_scaling)
     bpy.utils.register_class(OBJECT_OT_switch_to_maya_scaling)
+    bpy.utils.register_class(OBJECT_OT_switch_to_cod_scaling)
     bpy.utils.register_class(VIEW3D_PT_scaling_tools_panel)
 
 
@@ -178,4 +195,5 @@ def unregister():
     bpy.utils.unregister_class(VIEW3D_PT_maya_tools_panel)
     bpy.utils.unregister_class(OBJECT_OT_switch_to_blender_scaling)
     bpy.utils.unregister_class(OBJECT_OT_switch_to_maya_scaling)
+    bpy.utils.unregister_class(OBJECT_OT_switch_to_cod_scaling)
     bpy.utils.unregister_class(VIEW3D_PT_scaling_tools_panel)
