@@ -1,20 +1,19 @@
-from bpy.types import AddonPreferences
-from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
+import bpy
 
 from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregister
 
 from . import addon_updater_ops
 
 @addon_updater_ops.make_annotations
-class BlenderCoD_Preferences(AddonPreferences):
+class BlenderCoD_Preferences(bpy.types.AddonPreferences):
     bl_idname = __package__
 
-    auto_check_update : BoolProperty(name="Auto-check for Update", description="If enabled, auto-check for updates using an interval", default=False) #type:ignore
+    auto_check_update : bpy.props.BoolProperty(name="Auto-check for Update", description="If enabled, auto-check for updates using an interval", default=False) #type:ignore
 
-    updater_interval_months : IntProperty(name='Months', description="Number of months between checking for updates", default=0, min=0) #type:ignore
-    updater_interval_days : IntProperty(name='Days', description="Number of days between checking for updates", default=7, min=0, max=31) #type:ignore
-    updater_interval_hours : IntProperty(name='Hours', description="Number of hours between checking for updates", default=0, min=0, max=23) #type:ignore
-    updater_interval_minutes : IntProperty(name='Minutes', description="Number of minutes between checking for updates", default=0, min=0, max=59) #type:ignore
+    updater_interval_months : bpy.props.IntProperty(name='Months', description="Number of months between checking for updates", default=0, min=0) #type:ignore
+    updater_interval_days : bpy.props.IntProperty(name='Days', description="Number of days between checking for updates", default=7, min=0, max=31) #type:ignore
+    updater_interval_hours : bpy.props.IntProperty(name='Hours', description="Number of hours between checking for updates", default=0, min=0, max=23) #type:ignore
+    updater_interval_minutes : bpy.props.IntProperty(name='Minutes', description="Number of minutes between checking for updates", default=0, min=0, max=59) #type:ignore
 
     def update_submenu_mode_lambda(self, context):
         try:
@@ -40,13 +39,13 @@ class BlenderCoD_Preferences(AddonPreferences):
         if self.unit_enum in unit_map:
             self.scale_length = unit_map[self.unit_enum]
 
-    use_submenu: BoolProperty(
+    use_submenu: bpy.props.BoolProperty(
         name="Group Import/Export Buttons",
         default=False,
         update=update_submenu_mode_lambda
     ) #type:ignore
 
-    unit_enum: EnumProperty(
+    unit_enum: bpy.props.EnumProperty(
         items=(('CENTI', "Centimeters", ""),
                ('MILLI', "Millimeters", ""),
                ('METER', "Meters", ""),
@@ -64,7 +63,7 @@ class BlenderCoD_Preferences(AddonPreferences):
         update=update_scale_length
     ) #type:ignore
 
-    scale_length: FloatProperty(
+    scale_length: bpy.props.FloatProperty(
         name="Unit Scale",
         description="Scale factor to use, follows the same conventions as "
                     "Blender's unit scale in the scene properties\n"
