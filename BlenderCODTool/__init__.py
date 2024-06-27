@@ -20,7 +20,7 @@
 bl_info = {
     "name": "BlenderCODTool 4.1",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
-    "version": (0, 9, 2),
+    "version": (0, 9, 3),
     "blender": (4, 1, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
@@ -108,6 +108,8 @@ def register():
     AlxRegisterClassQueue()
 
     submenu_reloader_register()
+
+    bpy.context.preferences.use_preferences_save = True
 
 def unregister():
     addon_updater_ops.unregister()
