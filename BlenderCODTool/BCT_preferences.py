@@ -1,20 +1,10 @@
 from bpy.types import AddonPreferences
-from bpy.props import BoolProperty, EnumProperty, FloatProperty, IntProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty
 
 from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregister
 
-from . import addon_updater_ops
-
-@addon_updater_ops.make_annotations
 class BlenderCoD_Preferences(AddonPreferences):
     bl_idname = __package__
-
-    auto_check_update : BoolProperty(name="Auto-check for Update", description="If enabled, auto-check for updates using an interval", default=False) #type:ignore
-
-    updater_interval_months : IntProperty(name='Months', description="Number of months between checking for updates", default=0, min=0) #type:ignore
-    updater_interval_days : IntProperty(name='Days', description="Number of days between checking for updates", default=7, min=0, max=31) #type:ignore
-    updater_interval_hours : IntProperty(name='Hours', description="Number of hours between checking for updates", default=0, min=0, max=23) #type:ignore
-    updater_interval_minutes : IntProperty(name='Minutes', description="Number of minutes between checking for updates", default=0, min=0, max=59) #type:ignore
 
     def update_submenu_mode_lambda(self, context):
         try:
@@ -44,7 +34,7 @@ class BlenderCoD_Preferences(AddonPreferences):
         name="Group Import/Export Buttons",
         default=False,
         update=update_submenu_mode_lambda
-    ) #type:ignore
+    )
 
     unit_enum: EnumProperty(
         items=(('CENTI', "Centimeters", ""),
@@ -62,7 +52,7 @@ class BlenderCoD_Preferences(AddonPreferences):
                     "no units are specified in the scene presets",
         default='INCH',
         update=update_scale_length
-    ) #type:ignore
+    )
 
     scale_length: FloatProperty(
         name="Unit Scale",
@@ -77,14 +67,20 @@ class BlenderCoD_Preferences(AddonPreferences):
         precision=6,
         step=1,
         default=1.0
-    ) #type:ignore
+    )
+
+    auto_import: BoolProperty(
+        name="Auto Import",
+        default=True,
+        description="Automatically import files when dropped into Blender"
+    )
 
     def draw(self, context):
         layout = self.layout
 
+        # Submenu and Scale Options
         row = layout.row()
         row.prop(self, "use_submenu")
-        # Scale Options
         col = row.column(align=True)
         col.label(text="Units:")
         sub = col.split(align=True)
@@ -93,5 +89,17 @@ class BlenderCoD_Preferences(AddonPreferences):
         sub.enabled = self.unit_enum == 'CUSTOM'
         sub.prop(self, "scale_length")
 
-        addon_updater_ops.update_settings_ui(self, context)
-        
+        # Auto Import Checkbox
+        layout.prop(self, "auto_import", text="Auto Import")
+
+        # Import Button
+        layout.operator("object.import_fbx_button", text="Import FBX")
+
+    def register():
+        bpy.utils.register_class(BlenderCoD_Preferences)
+
+    def unregister():
+        bpy.utils.unregister_class(BlenderCoD_Preferences)
+
+    if __name__ == "__main__":
+        register()
