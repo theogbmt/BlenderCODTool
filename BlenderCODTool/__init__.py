@@ -39,15 +39,15 @@ import importlib
 from os import sep as os_separator
 from pathlib import Path
 
+
 import bpy
 from . import addon_updater_ops
-
 
 
 init_path: Iterable[str]  = __path__
 folder_name_blacklist: list[str]=("__pycache__") 
 file_name_blacklist: list[str]=("__init__.py")
-class_name_blacklist: list[str]=("")
+class_name_blacklist: list[str]=("PSA_UL_sequences")
 
 
 addon_folders = set()
@@ -88,6 +88,7 @@ bpy_class_object_list = tuple(bpy_class[1] for bpy_class in inspect.getmembers(b
 alx_class_object_list = tuple(alx_class[1] for file_batch in addon_files for alx_class in inspect.getmembers(eval(file_batch[1]), inspect.isclass) if issubclass(alx_class[1], bpy_class_object_list) and (not issubclass(alx_class[1], bpy.types.WorkSpaceTool)))
 
 AlxClassQueue = alx_class_object_list
+
 
 def AlxRegisterClassQueue():
     for AlxClass in AlxClassQueue:
