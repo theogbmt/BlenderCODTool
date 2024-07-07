@@ -20,7 +20,7 @@
 bl_info = {
     "name": "BlenderCODTool 4.1",
     "author": "( 4.1 ) bigmanting ( 3.0 ) Ma_rv ( 2.8 ) CoDEmanX, Flybynyt, SE2Dev",
-    "version": (0, 9, 0),
+    "version": (0, 9, 3),
     "blender": (4, 1, 0),
     "location": "File > Import  |  File > Export",
     "description": "Import/Export XModels and XAnims",
@@ -39,14 +39,9 @@ import importlib
 from os import sep as os_separator
 from pathlib import Path
 
-
-<<<<<<< HEAD
 import bpy
 from . import addon_updater_ops
-=======
-folder_blacklist = ["__pycache__"]
-file_blacklist = ["__init__.py", "addon_updater_ops", "addon_updater.py"]
->>>>>>> 08cfbbc64ec5c5178e86e79d2efa63b4ecf5f362
+
 
 
 init_path: Iterable[str]  = __path__
@@ -94,7 +89,6 @@ alx_class_object_list = tuple(alx_class[1] for file_batch in addon_files for alx
 
 AlxClassQueue = alx_class_object_list
 
-
 def AlxRegisterClassQueue():
     for AlxClass in AlxClassQueue:
         try:
@@ -115,21 +109,23 @@ def AlxUnregisterClassQueue():
 ##################################################
 
 from .BCT_utilities import submenu_reloader_register, submenu_reloader_unregister
+from . import addon_updater_ops
 
 def register():
-<<<<<<< HEAD
     try:
         addon_updater_ops.register(bl_info)
     except:
         print("BlenderCODTools: addon_updater failed")
 
-=======
->>>>>>> 08cfbbc64ec5c5178e86e79d2efa63b4ecf5f362
     AlxRegisterClassQueue()
 
     submenu_reloader_register()
 
+    bpy.context.preferences.use_preferences_save = True
+
 def unregister():
+    addon_updater_ops.unregister()
+
     AlxUnregisterClassQueue()
 
     submenu_reloader_unregister()
