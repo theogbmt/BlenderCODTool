@@ -1,4 +1,3 @@
-#XMODEL DRAG N DROP SUPPORT ADDED -#bigmanting
 import bpy
 import time
 from . import import_xmodel  # Adjust this import based on your actual module structure
@@ -61,13 +60,7 @@ class WM_FH_drag_and_drop_xmodel(bpy.types.FileHandler):
 
 class Import_FBX(bpy.types.Operator):
     bl_idname = "wm.import_fbx"
-    bl_label = "Import FBX"
-    bl_description = "Install Addon"
-    bl_options = {'INTERNAL'}
-    
-    auto_import: bpy.props.BoolProperty(
-        name="Auto Import",
-        default=True,
+	@@ -23,7 +70,7 @@ class Import_FBX(bpy.types.Operator):
         description="If enabled, automatically import the FBX file"
     )
 
@@ -75,8 +68,7 @@ class Import_FBX(bpy.types.Operator):
 
     def execute(self, context):
         if self.auto_import:
-            bpy.ops.import_scene.fbx("EXEC_DEFAULT", filepath=self.filepath)
-        else:
+	@@ -32,14 +79,31 @@ def execute(self, context):
             bpy.ops.import_scene.fbx("INVOKE_DEFAULT", filepath=self.filepath)
         return {'FINISHED'}
 
@@ -108,5 +100,3 @@ def unregister():
 
 print( '''\n____  __    ____  __ _  ____  ____  ____     ___  __  ____    ____  __    __   __    ____  
 (  _ \(  )  (  __)(  ( \(    \(  __)(  _ \   / __)/  \(    \  (_  _)/  \  /  \ (  )  / ___) 
- ) _ (/ (_/\ ) _) /    / ) D ( ) _)  )   /  ( (__(  O )) D (    )( (  O )(  O )/ (_/\\___ \ 
-(____/\____/(____)\_)__)(____/(____)(__\_)   \___)\__/(____/   (__) \__/  \__/ \____/(____/ )\n\nBlender COD Version 0.9 Loaded\n\nSpecial thanks to Valy Arhal and Rex for making this more streamlined\n''' )
