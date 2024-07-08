@@ -1,4 +1,3 @@
-#XMODEL DRAG N DROP SUPPORT ADDED -#bigmanting
 import bpy
 import time
 from . import import_xmodel  # Adjust this import based on your actual module structure
@@ -45,24 +44,10 @@ class Operator_Import_XModel(bpy.types.Operator):
         # Automatically execute without showing the file select window
         return self.execute(context)
 
-class WM_FH_drag_and_drop_xmodel(bpy.types.FileHandler):
-    bl_idname = "WM_FH_drag_and_drop_xmodel"
-    bl_label = "Import XModel"
-    bl_import_operator = "wm.import_xmodel"
-    bl_file_extensions = ".xmodel_bin"
-
-    @classmethod
-    def poll_drop(cls, context):
-        if context.space_data.type == "VIEW_3D":
-            print("detected")
-            return True
-        print("not detected")
-        return False
-
 class Import_FBX(bpy.types.Operator):
     bl_idname = "wm.import_fbx"
     bl_label = "Import FBX"
-    bl_description = "Install Addon"
+    bl_description = "Import FBX file"
     bl_options = {'INTERNAL'}
     
     auto_import: bpy.props.BoolProperty(
@@ -80,33 +65,28 @@ class Import_FBX(bpy.types.Operator):
             bpy.ops.import_scene.fbx("INVOKE_DEFAULT", filepath=self.filepath)
         return {'FINISHED'}
 
-class WM_FH_drag_and_drop_fbx(bpy.types.FileHandler):
-    bl_idname = "WM_FH_drag_and_drop_fbx"
-    bl_label = "Import FBX"
-    bl_import_operator = "wm.import_fbx"
-    bl_file_extensions = ".fbx"
+def draw_menu_import(self, context):
+    layout = self.layout
+    layout.operator(Operator_Import_XModel.bl_idname, text="Import XModel")
+    layout.operator(Import_FBX.bl_idname, text="Import FBX")
 
-    @classmethod
-    def poll_drop(cls, context):
-        if context.space_data.type == "VIEW_3D":
-            print("detected")
-            return True
-        print("detected")
-        return False
+def drop_handler(filepath):
+    # Determine the file type and call the appropriate import operator
+    if filepath.lower().endswith(".xmodel_bin"):
+        bpy.ops.wm.import_xmodel(filepath=filepath)
+    elif filepath.lower().endswith(".fbx"):
+        bpy.ops.wm.import_fbx(filepath=filepath)
+    else:
+        print("Unsupported file format:", filepath)
 
 def register():
     bpy.utils.register_class(Operator_Import_XModel)
-    bpy.utils.register_class(WM_FH_drag_and_drop_xmodel)
     bpy.utils.register_class(Import_FBX)
-    bpy.utils.register_class(WM_FH_drag_and_drop_fbx)
+    bpy.types.TOPBAR_MT_file_import.append(draw_menu_import)
+    bpy.types.WindowManager.fileselect_add(drop_handler)
 
 def unregister():
     bpy.utils.unregister_class(Operator_Import_XModel)
-    bpy.utils.unregister_class(WM_FH_drag_and_drop_xmodel)
     bpy.utils.unregister_class(Import_FBX)
-    bpy.utils.unregister_class(WM_FH_drag_and_drop_fbx)
-
-print( '''\n____  __    ____  __ _  ____  ____  ____     ___  __  ____    ____  __    __   __    ____  
-(  _ \(  )  (  __)(  ( \(    \(  __)(  _ \   / __)/  \(    \  (_  _)/  \  /  \ (  )  / ___) 
- ) _ (/ (_/\ ) _) /    / ) D ( ) _)  )   /  ( (__(  O )) D (    )( (  O )(  O )/ (_/\\___ \ 
-(____/\____/(____)\_)__)(____/(____)(__\_)   \___)\__/(____/   (__) \__/  \__/ \____/(____/ )\n\nBlender COD Version 0.9 Loaded\n\nSpecial thanks to Valy Arhal and Rex for making this more streamlined\n''' )
+    bpy.types.TOPBAR_MT_file_import.remove(draw_menu_import)
+    bpy.types.WindowManager.fileselect_remove(drop_handler)
